@@ -1,0 +1,11 @@
+{
+    "id": "LCB",
+    "name": "Limbus Company",
+    "author": ["AmazinDooD"],
+    "description": "A mod that adds E.G.O. Gifts and Identities from Limbus Company to Balatro.",
+    "prefix": "lcb",
+    "main_file": "LimbusCompanyBalatroModOrSomething.lua",
+    "version": "1.0.0",
+    "badge_colour": "B82322",
+    "display_name": "Limbus Company"
+}
