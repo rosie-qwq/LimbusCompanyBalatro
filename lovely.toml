@@ -20,5 +20,5 @@ payload = '''
     ego_zayin = G.C.ZAYIN,
     ego_teth = G.C.TETH,
     ego_he = G.C.HE,
-    ego.waw = G.C.WAW,
+    ego_waw = G.C.WAW,
 '''
