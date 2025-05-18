@@ -1,0 +1,24 @@
+[manifest]
+version = "1.0.0"
+priority = -1
+
+# Sin colours
+[[patches]]
+[patches.pattern]
+target = "functions/misc_functions.lua"
+pattern = "  G.ARGS.LOC_COLOURS = G.ARGS.LOC_COLOURS or {"
+position = "after"
+match_indent = true
+payload = '''
+    sin_wrath = G.C.SIN_WRATH,
+    sin_lust = G.C.SIN_LUST,
+    sin_sloth = G.C.SIN_SLOTH,
+    sin_gluttony = G.C.SIN_GLUTTONY,
+    sin_gloom = G.C.SIN_GLOOM,
+    sin_pride = G.C.SIN_PRIDE,
+    sin_envy = G.C.SIN_ENVY,
+    ego_zayin = G.C.ZAYIN,
+    ego_teth = G.C.TETH,
+    ego_he = G.C.HE,
+    ego.waw = G.C.WAW,
+'''

@@ -33,29 +33,114 @@ SMODS.Atlas {
     py = 256
 }
 
+SMODS.Atlas {
+    key = "ego",
+    path = "ego.png",
+    px = 71,
+    py = 95
+}
+
+SMODS.ConsumableType{
+    key = "lcb_ego",
+    primary_colour = HEX("EB8334"),
+    secondary_colour = HEX("E8572B"),
+    loc_txt = { -- No clue how to do this with localization files.
+        name = "E.G.O.",
+        collection = "E.G.O. Cards",
+        undiscovered = {
+            name = "Not Discovered",
+            text = {
+                "Purchase or use",
+                "this card in an",
+                "unseeded run to",
+                "learn what it does",
+            },
+        }
+    },
+    collection_rows = {4,4},
+    shop_rate = 0.5,
+    cards = {
+        ["c_lcb_la_sangre"] = true
+    }
+}
+
+SMODS.UndiscoveredSprite {
+    key = "lcb_ego",
+    atlas = "ego",
+    pos = {x=0,y=0},
+    overlay_pos = {x=-4,y=1}
+}
+
 -- TODO: All O sinners (remaining Yi Sang, Faust, Hong Lu)
 -- Start with Shi Ishmael for the OO sinners
 
+-- Holding M is for the weak, now i can just type "eval _R()" and win
+function _R() SMODS.restart_game() end
+
+local lcb_config = SMODS.current_mod.config
+local magic_bullet_texts = {
+    "It really is as you say; this is a magic bullet that will never miss.",
+    "My bullet inevitably flies in the same direction, its trajectory preordained. There are no coincidences.",
+    "There's no going back when I've already come this far by firing the bullet. Even if this road I walk is an inevitable path to inferno.",
+    "Do not seek my mercy, for only desolation awaits those who stand in my path.",
+    "Remain unshaken. Grant silence to all that stands before you. Follow the land horizon.",
+    "The despairing heart is burnt black, never to fade away. Only the shearing cold floods within.",
+    "Though it was despair that I sought, the bullet's trajectory… is predetermined!" -- *dies*
+}
+-- nothing here
+local unsuspicious_text = "힘들었어요? 지쳤어요. 쉬고 싶어요? 배고파요. 나가고 싶어요?     잘리고 싶어요? 뼈가 녹아요. 살이 터져요? 죽지는 않아요.    죄송합니다. 그만하겠습니다."
+
+local function sin_to_text(sin)
+    local sins = { "Wrath", "Lust", "Sloth", "Gluttony", "Gloom", "Pride", "Envy" }
+    return sins[sin]
+end
+
 local function has_value(tab, val)
-    for index, value in ipairs(tab) do
-        if value == val then
+    for i, v in ipairs(tab) do
+        if v == val then
             return true
         end
     end
     return false
 end
 
-local lcb_config = SMODS.current_mod.config
+local function index_of(arr, val)
+    for i, v in ipairs(arr) do
+        if v == val then
+            return i
+        end
+    end
+    return nil
+end
 
 function G.FUNCS.lcb_switch_pack_music(arg)
     lcb_config.limbus_pack_music = arg.to_key
     SMODS.save_mod_config(SMODS.current_mod)
 end
 
+local function create_sin_uibox()
+    local text = ""
+    for i=1,7 do text = text..sin_to_text(i)..": "..G.GAME.lcb_sins[i]..(i~= 7 and ", " or "") end
+    return {n = G.UIT.ROOT, config = {align = "cr", colour = G.C.CLEAR}, nodes = {
+        {n=G.UIT.R, config = {align = "cm", padding = 3}, nodes = { -- Don't ask me why the padding is 3, i changed it for testing and then aligned the text but forgot to change it back
+            { n = G.UIT.T, config = { text = text, colour = G.C.UI.TEXT_LIGHT, scale = 0.3 } }
+        }}
+    }}
+end
+
+local function update_sin_uibox()
+    if G.UIDEF.lcb_sins then G.UIDEF.lcb_sins.config.object:remove() end
+    local sin_text = UIBox {
+        definition = create_sin_uibox(),
+        config = { align = "cm", major = G.ROOM_ATTACH, offset = {x=-1.3,y=-6}}
+    }
+    local sin_obj = { n = G.UIT.O, config = { object = sin_text } }
+    G.UIDEF.lcb_sins = sin_obj
+end
+
 local igo = Game.init_game_object
 function Game:init_game_object()
     local ret = igo(self)
-    --ret.lcb_blind_effects = {burn = {0,0}, bleed = {0,0}, poise = {0,0}}
     ret.lcb_blind_effects = {tremor = 0, rupture = {0,0}} -- Tremor only has Potency here
     -- The first value is Potency, the second is Count
     -- !! Rupture: Each card gives (Rupture * 10) Chips and decreases count by 1 (DONE)
@@ -64,14 +149,39 @@ function Game:init_game_object()
     -- !! Charge: just decreases by 1 after hand is played lol
     -- !! Poise: gives X(1 + potency / 4) Mult, decreases count by 1 (on joker) (DONE)
     -- !! Sinking & Burn still left to do
+    -- yeugh i have no ideas for sinking
     ret.lcb_sins = {0,0,0,0,0,0,0}
     -- The sin is a number from 1 to 7, 1 being wrath, 2 being lust etc.
     -- Using a skill of the said sin gives you one of that sin
     -- E.G.O. skills consume sins for better effects
-    -- E.G.O. are obtained from packs
+    -- E.G.O. are obtained from packs or shop
     ret.pool_flags.cannot_spawn = true -- Anything with the no_pool_flag of this just, won't spawn
     return ret
 end
+
+-- Add an ego resource and refresh the UIBox
+function add_ego_resource(sin, count)
+    if not sin or not count or not G.GAME or not G.GAME.lcb_blind_effects then return nil end
+    local sins = { "Wrath", "Lust", "Sloth", "Gluttony", "Gloom", "Pride", "Envy" }
+    if has_value(sins,sin) then G.GAME.lcb_sins[index_of(sins, sin)] = G.GAME.lcb_sins[index_of(sins, sin)] + count
+    else G.GAME.lcb_sins[sin] = G.GAME.lcb_sins[sin] + count end
+    update_sin_uibox()
+end
+
+-- Colours
+G.C.SIN_WRATH = HEX("c62d14")
+G.C.SIN_LUST = HEX("ce5c12")
+G.C.SIN_SLOTH = HEX("e38800")
+G.C.SIN_GLUTTONY = HEX("669b10")
+G.C.SIN_GLOOM = HEX("14788d")
+G.C.SIN_PRIDE = HEX("0a5294")
+G.C.SIN_ENVY = HEX("8f1fc3")
+
+G.C.ZAYIN = HEX("7a570f")
+G.C.TETH = HEX("975817")
+G.C.HE = HEX("a75900")
+G.C.WAW = HEX("ac4704")
+-- aleph doesnt exist yet
 
 function SMODS.current_mod.config_tab()
     local sprite = Sprite(34, 34, 1, 1, G.ASSET_ATLAS["lcb_modicon"])
@@ -92,7 +202,8 @@ function SMODS.current_mod.config_tab()
             "Abnormality Extraction Theme",
             "Oh Crab, So Crab",
             "La Mancha Carnival",
-            "A Midspring Night's Dream 2"
+            "A Midspring Night's Dream 2",
+            unsuspicious_text,
         },
         opt_callback = "lcb_switch_pack_music",
         current_option = lcb_config.limbus_pack_music
@@ -116,13 +227,9 @@ function SMODS.current_mod.reset_game_globals(run_start)
     end
     if G.GAME.blind and G.GAME.blind.boss then G.GAME.lcb_blind_effects.poise = {0,0} end
     ]]
+    update_sin_uibox()
     G.GAME.lcb_blind_effects.tremor = 0
     G.GAME.lcb_blind_effects.rupture = {0,0}
-end
-
-local function sin_to_text(sin)
-    local sins = { "Wrath", "Lust", "Sloth", "Gluttony", "Gloom", "Pride", "Envy" }
-    return sins[sin]
 end
 
 local function skill_switch(context, card)
@@ -139,6 +246,7 @@ local function skill_switch(context, card)
             if card.ability.extra.current_skill == 4 then card.ability.extra.current_skill = 1 end
         end
         sendInfoMessage(sin_to_text(sin).." sin granted, you now have "..G.GAME.lcb_sins[sin])
+        update_sin_uibox()
     end
 end
 
@@ -207,6 +315,7 @@ SMODS.Rarity {
 SMODS.Sound {
     key = "tremor_burst",
     path = "limbus_tremor_burst.mp3",
+    pitch = 1
 }
 
 -- Limbus Pack Music --
@@ -273,6 +382,18 @@ SMODS.Sound {
     end,
 }
 
+SMODS.Sound {
+    key = "music_the_funny_library_of_ruina_thing_that_probably_no_one_will_get",
+    path = "the library.mp3",
+    pitch = 1,
+    select_music_track = function()
+        if not SMODS.OPENED_BOOSTER or lcb_config.limbus_pack_music ~= 6 then return false end
+        return G.booster_pack and not G.booster_pack.REMOVED and
+            SMODS.OPENED_BOOSTER.config.center.key == "p_lcb_limbus_pack" or
+            SMODS.OPENED_BOOSTER.config.center.key == "p_lcb_three_star_pack" and 100 or nil
+    end,
+}
+
 
 -- LIMBUS COMPANYYYYYYYYYYYYYYYYYYYYYYY
 SMODS.Sound {
@@ -297,8 +418,8 @@ SMODS.Booster {
     create_card = function(self, card, i)
         local random = pseudorandom("limbus_booster")
         local rarity = (random <= 0.7 and "lcb_o" or random <= 0.95 and "lcb_oo") or "lcb_ooo"
-        -- !! TODO: REMEMBER TO DELETE THIS WHEN I ADD OO AND OOO RARITY JOKERS!!!!!!!!!!!!!!!!!!!
-        if rarity ~= "lcb_o" then rarity = "lcb_o" end
+        -- !! TODO: REMEMBER TO DELETE THIS WHEN I ADD OOO RARITY JOKERS!!!!!!!!!!!!!!!!!!!
+        if rarity == "lcb_ooo" then rarity = "lcb_oo" end
 
         return SMODS.create_card{
             set = "Joker",
@@ -328,6 +449,158 @@ SMODS.Booster {
         }
     end
 }
+
+
+SMODS.Consumable{
+    key = "la_sangre",
+    set = "lcb_ego",
+    atlas = "ego",
+    pos = {x=1,y=0},
+    config = {extra = {active = false}},
+    cost = 10,
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue+1] = {
+            set = "Other",
+            key = "bleed"
+        }
+        return {
+            vars = {
+                card.ability.extra.active and "Active!" or "Inactive",
+                colours = {card.ability.extra.active and G.C.GREEN or G.C.RED}
+            }
+        }
+    end,
+    can_use = function(self, card)
+        return G.GAME.lcb_sins[2] >= 2 and G.GAME.lcb_sins[6] >= 2 and #SMODS.find_card("j_lcb_don_quixote") ~= 0 and not card.ability.extra.active
+    end,
+    use = function(self, card, area)
+        local _card = SMODS.add_card{key="c_lcb_la_sangre", set="Ego"}
+        _card.ability.extra.active = true
+        G.GAME.lcb_sins[2] = G.GAME.lcb_sins[2] - 2
+        G.GAME.lcb_sins[6] = G.GAME.lcb_sins[6] - 2
+        update_sin_uibox()
+        card_eval_status_text(card, "extra", nil, nil, nil, {message="Active!"})
+    end,
+    calculate = function(self, card, context)
+        if card.ability.extra.active then
+            if context.after then
+                G.E_MANAGER:add_event(Event({
+                    trigger = 'after',
+                    delay = 0.3,
+                    blockable = false,
+                    func = function()
+                        play_sound('tarot1')
+                        card:start_dissolve(nil, false, 2)
+                        G.jokers:remove_card(card)
+                        card = nil
+                        return true;
+                    end
+                }))
+            end
+            if context.before then
+                modify_blind(0.3)
+            end
+        end
+    end
+}
+
+SMODS.Consumable {
+    key = "magic_bullet",
+    set = "lcb_ego",
+    atlas = "ego",
+    pos = { x = 2, y = 0 },
+    config = { extra = { active = false, magic_bullet = 0} },
+    cost = 10,
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_1" }
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_2" }
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_3" }
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_4" }
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_5" }
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_6" }
+        info_queue[#info_queue + 1] = { set = "Other", key = "magic_bullet_7" }
+        return {
+            vars = {
+                card.ability.extra.active and "Active!" or "Inactive",
+                colours = { card.ability.extra.active and G.C.GREEN or G.C.RED }
+            }
+        }
+    end,
+    can_use = function(self, card)
+        return G.GAME.lcb_sins[2] >= 2 and G.GAME.lcb_sins[6] >= 2 and #SMODS.find_card("j_lcb_outis") ~= 0 and
+        not card.ability.extra.active
+    end,
+    use = function(self, card, area)
+        local _card = SMODS.add_card { key = "c_lcb_magic_bullet", set = "Ego" }
+        _card.ability.extra.active = true
+        G.GAME.lcb_sins[2] = G.GAME.lcb_sins[2] - 2
+        G.GAME.lcb_sins[6] = G.GAME.lcb_sins[6] - 2
+        update_sin_uibox()
+        card_eval_status_text(card, "extra", nil, nil, nil, { message = "Active!" })
+        -- TODO: set the magic bullet value here (card.ability.extra.magic_bullet)
+    end,
+    calculate = function(self, card, context)
+        if card.ability.extra.active then
+            if context.after then
+                if card.ability.extra.magic_bullet == 7 then
+                    local outis_card
+                    for i in G.GAME.jokers.cards do
+                        if string.match(i.config.center.key, "outis") then outis_card = i; break end
+                    end
+                    -- so that i dont crash the game
+                    if not outis_card then sendInfoMessage("what the fuck did you do, where is my outis card","LCB")
+                    else
+                        G.E_MANAGER:add_event(Event({
+                            trigger = 'after',
+                            delay = 0.3,
+                            blockable = false,
+                            func = function()
+                                play_sound('tarot1')
+                                card:start_dissolve(nil, false, 2)
+                                G.jokers:remove_card(outis_card)
+                                card = nil
+                                return true;
+                            end
+                        }))
+                    end
+                end
+                G.E_MANAGER:add_event(Event({
+                    trigger = 'after',
+                    delay = 0.3,
+                    blockable = false,
+                    func = function()
+                        play_sound('tarot1')
+                        card:start_dissolve(nil, false, 2)
+                        G.jokers:remove_card(card)
+                        card = nil
+                        return true;
+                    end
+                }))
+            end
+            if context.joker_main then
+                -- do the shtuff
+                if card.ability.extra.magic_bullet == 1 then
+                    
+                elseif card.ability.extra.magic_bullet == 2 then
+
+                elseif card.ability.extra.magic_bullet == 3 then
+
+                elseif card.ability.extra.magic_bullet == 4 then
+
+                elseif card.ability.extra.magic_bullet == 5 then
+
+                elseif card.ability.extra.magic_bullet == 6 then
+
+                else
+                    -- hoo boy
+                    local xmult = 20
+
+                end
+            end
+        end
+    end
+}
+
 
 SMODS.Joker {
     key = "white_gossypium",
@@ -756,7 +1029,7 @@ SMODS.Joker {
                         card = card
                     }
                 end
-            end
+            end 
         end
         if context.end_of_round and not context.game_over and context.main_eval then
             if G.GAME.current_round.hands_left <= 2 then card.ability.extra.won_last = true else card.ability.extra.won_last = false end
@@ -864,28 +1137,35 @@ SMODS.Joker {
         skill_switch(context, card)
         if context.joker_main then
             if card.ability.extra.current_skill == 1 then
+                if card.ability.extra.poise[2] <= 0 then card.ability.extra.poise[2] = 1 end
                 card.ability.extra.poise[1] = card.ability.extra.poise[1] + 2
                 card.ability.extra.poise[2] = card.ability.extra.poise[2] + 1
                 card_eval_status_text(card, "extra", nil, nil, nil, { message = "+2 Poise Potency" })
                 card_eval_status_text(card, "extra", nil, nil, nil, { message = "+1 Poise Count" })
-            elseif card.ability.extra.current_skill == 2 and card.ability.extra.skill2_effect_active then
-                card.ability.extra.poise[1] = card.ability.extra.poise[1] + 3
-                card_eval_status_text(card, "extra", nil, nil, nil, { message = "+3 Poise Potency" })
+            elseif card.ability.extra.current_skill == 2 then
+                if card.ability.extra.skill2_effect_active then
+                    if card.ability.extra.poise[2] <= 0 then card.ability.extra.poise[2] = 1 end
+                    card.ability.extra.poise[1] = card.ability.extra.poise[1] + 3
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+3 Poise Potency" })
+                end
             elseif card.ability.extra.poise[1] >= 5 then
-                card.ability.extra.poise[2] = card.ability.extra.poise[2] <= 99 and card.ability.extra.poise[2] * 2 or 99
+                if card.ability.extra.poise[2] <= 0 then card.ability.extra.poise[2] = 1 end
+                card.ability.extra.poise[2] = card.ability.extra.poise[2] * 2
                 card_eval_status_text(card, "extra", nil, nil, nil, { message = "×2 Poise Count" })
             end
             if card.ability.extra.poise[2] > 0 then
                 card.ability.extra.poise[2] = card.ability.extra.poise[2] - 1
+                if card.ability.extra.poise[2] <= 0 then card.ability.extra.poise = {0,0} end
                 return {
-                    xmult = 1 + card.ability.extra.poise[1] / 4,
+                    xmult = 1 + (card.ability.extra.poise[1] + 1) / 4,
                     card = card,
                     message = "Poise!"
                 }
-            else card.ability.extra.poise[1] = 0 end
+            else card.ability.extra.poise = {0,0} end
         end
         if context.before and card.ability.extra.current_skill == 3 then
             card.ability.extra.poise[2] = card.ability.extra.poise[2] + 2
+            if card.ability.extra.poise[1] <= 0 then card.ability.extra.poise[1] = 1 end
             card_eval_status_text(card, "extra", nil, nil, nil, { message = "+2 Poise Count" })
         end
         if context.after then
@@ -1050,6 +1330,103 @@ SMODS.Joker {
                     }
                 end
             end
+        end
+    end
+}
+
+SMODS.Joker {
+    key = "hong_lu",
+    rarity = "lcb_o",
+    pos = {x=0,y=2},
+    atlas = "lcb_jokers",
+    config = { extra = { current_skill = 1, times_skill_used = 0, sin = { 6, 3, 2 } } },
+}
+
+SMODS.Joker {
+    key = "faust",
+    rarity = "lcb_o",
+    pos = {x=1,y=2},
+    atlas = "lcb_jokers",
+    config = { extra = { current_skill = 1, times_skill_used = 0, sin = { 6, 3, 4 } } },
+}
+
+SMODS.Joker {
+    key = "yi_sang",
+    rarity = "lcb_o",
+    pos = {x=2,y=2},
+    atlas = "lcb_jokers",
+    config = { extra = { current_skill = 1, times_skill_used = 0, sin = { 5, 7, 3 } } },
+}
+
+SMODS.Joker {
+    key = "shi_ishmael",
+    rarity = "lcb_oo",
+    pos = {x=3,y=2},
+    atlas = "lcb_jokers",
+    config = { extra = { current_skill = 1, times_skill_used = 0, sin = { 7, 2, 1 }, poise = {0,0}} },
+    loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = {
+            key = "poise",
+            set = "Other"
+        }
+        return {
+            vars = {
+                (card.ability.extra.current_skill == 1 and "[Flying Sword]" or card.ability.extra.current_skill == 2 and "[Flashing Strike]") or
+                "[Catch Breath]",
+                card.ability.extra.poise[1],
+                card.ability.extra.poise[2]
+            },
+            main_end = {
+                { n = G.UIT.O, config = { object = Sprite(34, 34, 0.75, 0.75, G.ASSET_ATLAS["lcb_sins"], { x = 6, y = 0 }) } },
+                { n = G.UIT.O, config = { object = Sprite(34, 34, 0.75, 0.75, G.ASSET_ATLAS["lcb_sins"], { x = 1, y = 0 }) } },
+                { n = G.UIT.O, config = { object = Sprite(34, 34, 0.75, 0.75, G.ASSET_ATLAS["lcb_sins"], { x = 0, y = 0 }) } },
+            }
+        }
+    end,
+    calculate = function(self, card, context)
+        skill_switch(context, card)
+        if context.joker_main then
+            if card.ability.extra.current_skill == 1 then
+                if G.GAME.chips <= math.floor(G.GAME.blind.chips * 0.5) then
+                    card.ability.extra.poise[1] = card.ability.extra.poise[1] + 5
+                    if card.ability.extra.poise[2] == 0 then card.ability.extra.poise[2] = card.ability.extra.poise[2] + 1 end
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+5 Poise Potency" })
+                else
+                    card.ability.extra.poise[1] = card.ability.extra.poise[1] + 2
+                    if card.ability.extra.poise[2] == 0 then card.ability.extra.poise[2] = card.ability.extra.poise[2] + 1 end
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+2 Poise Potency" })
+                end
+            elseif card.ability.extra.current_skill == 2 then
+                if G.GAME.chips <= math.floor(G.GAME.blind.chips * 0.5) then
+                    card.ability.extra.poise[2] = card.ability.extra.poise[2] + 4
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+4 Poise Count" })
+                else
+                    card.ability.extra.poise[2] = card.ability.extra.poise[2] + 2
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+2 Poise Count" })
+                end
+            else
+                if psuedorandom("shi_ishmael") > 0.5 then
+                    card.ability.extra.poise[2] = card.ability.extra.poise[2] + 2
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+2 Poise Count" })
+                end
+                if card.ability.extra.poise[2] >= 5 then
+                    card.ability.extra.poise[1] = card.ability.extra.poise[1] * 2.5
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "×2.5 Poise Potency" })
+                end
+                if G.GAME.chips <= math.floor(G.GAME.blind.chips * 0.25) then
+                    card.ability.extra.poise[2] = card.ability.extra.poise[2] + 2
+                    card_eval_status_text(card, "extra", nil, nil, nil, { message = "+2 Poise Count" })
+                end
+            end
+            if card.ability.extra.poise[2] > 0 then
+                card.ability.extra.poise[2] = card.ability.extra.poise[2] - 1
+                if card.ability.extra.poise[2] == 0 then card.ability.extra.poise[1] = 0 end
+                return {
+                    xmult = 1 + card.ability.extra.poise[1] / 4,
+                    card = card,
+                    message = "Poise!"
+                }
+            else card.ability.extra.poise[1] = 0 end
         end
     end
 }
