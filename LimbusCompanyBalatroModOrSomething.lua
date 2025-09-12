@@ -7,7 +7,8 @@ things to note about this file
 • spaghetti code
 • if you want to copy any of this file's code: most of it is "borrowed" anyways
 • i am porfesional porgramer
-
+• If you want to learn how this mod is made, jump to line 300 :)
+• If you want some examples of add-on jokers, jump to line 400 :)
 --]]
 
 
@@ -168,6 +169,7 @@ function Game:init_game_object()
     -- !! Poise: gives X(1 + potency / 4) Mult, decreases count by 1 (on joker) (DONE)
     -- !! Sinking still left to do
     -- yeugh i have no ideas for sinking
+
     ret.lcb_sins = {0,0,0,0,0,0,0}
     -- The sin is a number from 1 to 7, 1 being wrath, 2 being lust etc.
     -- Using a skill of the said sin gives you one of that sin
@@ -176,6 +178,7 @@ function Game:init_game_object()
     ret.pool_flags.cannot_spawn = true -- Anything with the no_pool_flag of this just, won't spawn
     return ret
 end
+
 
 -- Load the sin UIBox when continuing a run
 Game.gsr = Game.start_run
@@ -207,6 +210,7 @@ G.C.TETH = HEX("975817")
 G.C.HE = HEX("a75900")
 G.C.WAW = HEX("ac4704")
 -- aleph doesnt exist yet
+
 
 function SMODS.current_mod.config_tab()
     local sprite = Sprite(34, 34, 1, 1, G.ASSET_ATLAS["lcb_modicon"])
@@ -241,17 +245,8 @@ function SMODS.current_mod.config_tab()
     return config_nodes
 end
 
+
 function SMODS.current_mod.reset_game_globals(run_start)
-    --[[
-    G.GAME.lcb_blind_effects.burn = {0,0}
-    G.GAME.lcb_blind_effects.bleed = {0,0}
-    if run_start then
-        add_tag(Tag("tag_lcb_burn_indicator"))
-        add_tag(Tag("tag_lcb_bleed_indicator"))
-        add_tag(Tag("tag_lcb_poise_indicator"))
-    end
-    if G.GAME.blind and G.GAME.blind.boss then G.GAME.lcb_blind_effects.poise = {0,0} end
-    ]]
     update_sin_uibox()
     G.GAME.lcb_blind_effects.tremor = 0
     G.GAME.lcb_blind_effects.rupture = {0,0}
@@ -300,9 +295,144 @@ end
 
 local function modify_blind_add(blind_mod) modify_blind((G.GAME.blind.chips + blind_mod) / G.GAME.blind.chips, false) end
 
+
+
+--[[
+FOR PEOPLE WHO WANT TO LEARN OFF OF THIS MOD! :)
+Variables and functions are below, you are welcome to browse them or make a derivative mod!
+--]]
+
+
 -- GLOBAL TABLE :)
-LCB = { inf_ego = function() G.GAME.lcb_sins = { 999, 999, 999, 999, 999, 999, 999 }; update_sin_uibox() end }
-LCB.add_e = add_ego_resource
+LCB = { S = {}, V = {}}
+
+-- Normal function names, stored in LCB
+LCB.add_ego_resource = add_ego_resource
+LCB.modify_blind = modify_blind
+LCB.modify_blind_add = modify_blind_add
+LCB.has_value = has_value
+LCB.index_of = index_of
+LCB.sin_to_text = sin_to_text
+LCB.infinite_ego = function() G.GAME.lcb_sins = { 999, 999, 999, 999, 999, 999, 999 }; update_sin_uibox() end
+LCB.config = lcb_config
+
+-- Status effect functions
+
+--- Bleed triggering function
+---@param potency integer
+---@param card Card
+LCB.bleed = function(potency, card)
+    LCB.S.m_bl(1 - (potency * 5 / 100), false)
+    card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by " .. 100 - potency * 5 .. "%" })
+end
+--- Burn triggering function
+---@param potency integer
+---@param card Card
+LCB.burn = function(potency, card)
+    LCB.S.m_bl(1 - (potency * 10 / 100), true)
+    card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by " .. 100 - potency * 10 .. "%" })
+end
+--- Tremor burst triggering function.
+---@param card Card
+---@return table
+LCB.tremor_burst = function(card)
+    if G.GAME.lcb_blind_effects.tremor ~= 0 then
+        local xmult = 1 + G.GAME.lcb_blind_effects.tremor / 2
+        G.GAME.lcb_blind_effects.tremor = 0
+        return {
+            xmult = xmult,
+            card = card,
+            message = "Tremor Burst!",
+            sound = "lcb_tremor_burst"
+        }
+    end
+end
+---Rupture triggering function.
+---@param card Card
+---@return table
+LCB.rupture = function(card)
+    local active = G.GAME.lcb_blind_effects.rupture[1] > 0 and G.GAME.lcb_blind_effects.rupture[2] > 0
+    G.GAME.lcb_blind_effects.rupture[2] = G.GAME.lcb_blind_effects.rupture[2] - 1
+    if active then return {
+        chips = G.GAME.lcb_blind_effects.rupture[1] * 10,
+        card = card,
+        message = "Rupture! +"..G.GAME.lcb_blind_effects.rupture[1] * 10,
+        colour = G.C.CHIPS
+    } end
+end
+-- Add a blind effect. The status parameter should be "Title Case". use_count may be ommitted for
+---@param card Card
+---@param status string
+---@param amount integer
+---@param use_count boolean
+LCB.add_status = function(card, status, amount, use_count)
+    if not use_count then use_count = false end
+    if not status or not amount or not card or (status ~= "rupture" and use_count) then return end
+    if status == "Rupture" then
+        G.GAME.lcb_blind_effects.rupture[use_count and 1 or 2] = G.GAME.lcb_blind_effects.rupture[use_count and 1 or 2] + amount
+    else 
+        G.GAME.lcb_blind_effects[status] = G.GAME.lcb_blind_effects[status] + amount
+    end
+    card_eval_status_text(card, "extra", nil, nil, nil, {message = "+"..amount.." "..status..(" Count" and use_count or "")})
+    LCB.log(amount.." "..status..(" Count " and use_count or " ").."added to blind")
+end
+
+--- Add any amount of sins.
+---@param sin integer
+---@param amount integer
+LCB.add_sin = function(sin, amount)
+    G.GAME.lcb_sins[sin] = G.GAME.lcb_sins[sin] + amount
+    LCB.log(LCB.S.stt(sin).." granted, you now have "..G.GAME.lcb_sins[sin])
+end
+
+---Check if logging is enabled, and send a log message if it is
+---@param message string
+LCB.log = function(message) if LCB.V.logging then sendInfoMessage(message, "LCB Logger") end end
+
+--- Check for the conditions to activate rupture
+---@param context table
+---@return boolean
+LCB.rupture_condition = function(context) return context and context.individual and context.cardarea and context.cardarea == G.play end
+
+--[[
+Example jokers using this mod as a dependency.
+
+-- Example calculate function for a joker that adds 3 rupture and 1 rupture count before scoring.
+calculate = function(self, card, context)
+    if context.before then
+        -- Potency
+        LCB.add_status(card, "Rupture", 3)
+        -- Count
+        LCB.add_status(card, "Rupture", 1, true)
+    end
+    -- This checks if the conditions are right for rupture to be triggered and triggers it if so.
+    if LCB.rupture_condition(context) then return LCB.rupture(card) end
+end
+
+Of course, you can use the short functions if you want :3
+Also some of the jokers in this mod may not use these functions because they haven't been fully updated yet, i might eventually
+]]
+
+-- Short function names, stored in LCB.S
+LCB.S.m_bl = modify_blind
+LCB.S.m_bl_a = modify_blind_add
+LCB.S.add_e = add_ego_resource
+LCB.S.get_idx = index_of
+LCB.S.has_val = has_value
+LCB.S.inf_e = LCB.infinite_ego
+LCB.S.stt = sin_to_text
+LCB.S.conf = lcb_config
+LCB.S.bl = LCB.bleed
+LCB.S.bu = LCB.burn
+LCB.S.tb = LCB.tremor_burst
+LCB.S.burst = LCB.tremor_burst
+LCB.S.r = LCB.rupture
+LCB.S.add_s = LCB.add_status
+LCB.S.rc = LCB.rupture_condition
+
+-- Variables and constants, stored in LCB.V
+-- Whether or not to enable logging. This will print messages when sins are granted or spent, status effects are applied, etc.
+LCB.V.logging = false
 
 SMODS.Rarity {
     key = "tier_i",
@@ -694,6 +824,8 @@ SMODS.Consumable {
     end
 }
 
+--[[
+Old things I might come back to later, who knows
 
 SMODS.Joker {
     key = "white_gossypium",
@@ -780,7 +912,7 @@ SMODS.Joker {
             }
         end
     end
-}
+}]]
 
 SMODS.Joker {
     key = "don_quixote",
@@ -810,6 +942,7 @@ SMODS.Joker {
     calculate = function(self, card, context)
         skill_switch(context, card)
         if context.joker_main then
+            -- scream code
             if lcb_config.don_is_funny then play_sound("lcb_limbus_company_yayy") end
             if card.ability.extra.current_skill == 1 then
                 local mult = hand_chips * mult >= 0.3 * G.GAME.blind.chips and 50 or 25
@@ -819,23 +952,35 @@ SMODS.Joker {
                 }
             elseif card.ability.extra.current_skill == 2 then
                 if card.ability.extra.skill2_effect_active then
+                    LCB.bleed(20, card)
+                    --[[
                     modify_blind(0.8,false)
                     card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by 20%" })
+                    ]]--
                     card.ability.extra.skill2_effect_active = false
                 else
+                    LCB.bleed(10, card)
+                    --[[
                     modify_blind(0.9, false)
                     card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by 10%" })
+                    ]]--
                     card.ability.extra.skill2_effect_active = true
                 end
             else
                 for i=1,2 do
                     if pseudorandom("don_quixote") > 0.5 then
+                        LCB.bleed(5, card)
+                        --[[
                         modify_blind(0.95, false)
                         card_eval_status_text(card, "extra", nil, nil, nil, {message = "Blind Reduced by 5%"})
+                        ]]--
                     end
                 end
+                LCB.bleed(10, card)
+                --[[
                 modify_blind(0.9, false)
                 card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by 10%" })
+                ]]--
             end
         end
     end
@@ -1076,12 +1221,11 @@ SMODS.Joker {
             local active = G.GAME.lcb_blind_effects.rupture[1] > 0 and G.GAME.lcb_blind_effects.rupture[2] > 0
             G.GAME.lcb_blind_effects.rupture[2] = G.GAME.lcb_blind_effects.rupture[2] - 1
             if active then return {
-                    chips = G.GAME.lcb_blind_effects.rupture[1] * 10,
-                    card = card,
-                    message = "Rupture! +"..G.GAME.lcb_blind_effects.rupture[1] * 10,
-                    colour = G.C.CHIPS
-                }
-            end
+                chips = G.GAME.lcb_blind_effects.rupture[1] * 10,
+                card = card,
+                message = "Rupture! +"..G.GAME.lcb_blind_effects.rupture[1] * 10,
+                colour = G.C.CHIPS
+            } end
         end
         if context.joker_main then
             if card.ability.extra.current_skill == 1 then
