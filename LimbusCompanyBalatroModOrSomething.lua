@@ -952,14 +952,14 @@ SMODS.Joker {
                 }
             elseif card.ability.extra.current_skill == 2 then
                 if card.ability.extra.skill2_effect_active then
-                    LCB.bleed(20, card)
+                    LCB.bleed(4, card)
                     --[[
                     modify_blind(0.8,false)
                     card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by 20%" })
                     ]]--
                     card.ability.extra.skill2_effect_active = false
                 else
-                    LCB.bleed(10, card)
+                    LCB.bleed(2, card)
                     --[[
                     modify_blind(0.9, false)
                     card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by 10%" })
@@ -969,14 +969,14 @@ SMODS.Joker {
             else
                 for i=1,2 do
                     if pseudorandom("don_quixote") > 0.5 then
-                        LCB.bleed(5, card)
+                        LCB.bleed(1, card)
                         --[[
                         modify_blind(0.95, false)
                         card_eval_status_text(card, "extra", nil, nil, nil, {message = "Blind Reduced by 5%"})
                         ]]--
                     end
                 end
-                LCB.bleed(10, card)
+                LCB.bleed(2, card)
                 --[[
                 modify_blind(0.9, false)
                 card_eval_status_text(card, "extra", nil, nil, nil, { message = "Blind Reduced by 10%" })
