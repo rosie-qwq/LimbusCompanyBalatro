@@ -129,7 +129,7 @@ return {
                     "{s:1.1}Currently using {C:attention,s:1.1}#1#",
                     "{C:attention}[Rupture]{} on Blind: {C:attention}#2#{} Potency, {C:attention}#3#{} Count",
                     " ",
-                    "{C:inactive,s:0.7}I’m Sinclair... Emil Sinclair. Oh, my number is, uhm... eleven." -- he is number ten though!!!!
+                    "{C:inactive,s:0.7}I'm Sinclair... Emil Sinclair. Oh, my number is, uhm... eleven." -- he is number ten though!!!!
                 }
             },
             j_lcb_heathcliff = {
