@@ -478,7 +478,7 @@ SMODS.Rarity {
 
 SMODS.Sound {
     key = "music_extraction_theme",
-    path = "Extraction Theme 2.wav",
+    path = "Extraction Theme 2.mp3",
     pitch = 1, -- why do i have to do this?
     -- definetly not yoinked from aikoyori's shenanigans, what are you talking about
     select_music_track = function()
@@ -491,7 +491,7 @@ SMODS.Sound {
 
 SMODS.Sound {
     key = "music_abnormality_extration",
-    path = "Abnormality Choice Theme.wav",
+    path = "Abnormality Choice Theme.mp3",
     pitch = 1,
     select_music_track = function()
         if not SMODS.OPENED_BOOSTER or lcb_config.limbus_pack_music ~= 2 then return false end
@@ -504,7 +504,7 @@ SMODS.Sound {
 -- bless your ears, listen to this
 SMODS.Sound {
     key = "music_oh_crab_so_crab",
-    path = "Oh Crab, So Crab.wav",
+    path = "Oh Crab, So Crab.mp3",
     pitch = 1,
     select_music_track = function()
         if not SMODS.OPENED_BOOSTER or lcb_config.limbus_pack_music ~= 3 then return false end
@@ -516,7 +516,7 @@ SMODS.Sound {
 
 SMODS.Sound {
     key = "music_la_mancha_carnival",
-    path = "La Mancha Carnival.wav",
+    path = "La Mancha Carnival.mp3",
     pitch = 1,
     select_music_track = function()
         if not SMODS.OPENED_BOOSTER or lcb_config.limbus_pack_music ~= 4 then return false end
@@ -528,7 +528,7 @@ SMODS.Sound {
 
 SMODS.Sound {
     key = "music_midspring_dream",
-    path = "A Midspring Night’s Dream 2.wav",
+    path = "A Midspring Night’s Dream 2.mp3",
     pitch = 1,
     select_music_track = function()
         if not SMODS.OPENED_BOOSTER or lcb_config.limbus_pack_music ~= 5 then return false end
@@ -566,13 +566,13 @@ SMODS.Sound {
 -- average london experience
 SMODS.Sound {
     key = "bleed",
-    path = "tingtang_honglu_skill2-2.wav"
+    path = "tingtang_honglu_skill2-2.mp3"
 }
 
 -- liu ishmael was my first 3* :)
 SMODS.Sound {
     key = "burn",
-    path = "LiuIsh_1_1.wav"
+    path = "LiuIsh_1_1.mp3"
 }
 
 SMODS.Booster {
